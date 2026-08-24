@@ -47,16 +47,27 @@ pick the correct, purpose-built `AirLLMQwen3_5` class (whose own docstring
 names Qwen3.8-27B by name). *Fix: `run_layered.py` imports `AirLLMQwen3_5`
 directly, bypassing `AutoModel` entirely. No AirLLM file modified.*
 
-**2. Shard-filename parser assumed the wrong naming convention, twice.**
+**2. Shard-filename parser assumed the wrong naming convention, twice --
+but only breaks the FP8 path, which this project doesn't actually use.**
 AirLLM's `utils.py` assumes shards are named `model-00001-of-00015.safetensors`
-and parses the shard number via `int(v.split('-')[1])`. This repo's FP8
-release ships one shard per layer instead: `layers-0.safetensors`, so
+and parses the shard number via `int(v.split('-')[1])`. `Qwen/Qwen3.8-27B-FP8`
+ships one shard per layer instead: `layers-0.safetensors`, so
 `v.split('-')[1]` is `"0.safetensors"`, not an integer, and it crashes in
 two separate places (`_last_shard_of` and the main shard-loading loop, plus
-a silently-swallowed third spot building `shard_num_to_file`). *Fix: three
-lines in `utils.py` changed to extract leading digits via regex instead of
-assuming the whole segment is numeric -- saved as `airllm_shard_naming.patch`,
-applied to this project's own `.venv` only, nowhere else.*
+a silently-swallowed third spot building `shard_num_to_file`).
+
+**Verified directly:** after switching to the plain BF16 repo (bug 4a below),
+we re-tested with AirLLM's completely unpatched, pristine `utils.py` and it
+split multiple layers with zero errors -- `Qwen/Qwen3.8-27B`'s shards are
+named the standard way (`model-00001-of-00018.safetensors`), which the
+*original* code already parses correctly. So **this patch is not required
+to run `run_layered.py` as currently configured.** It's applied anyway
+(strictly a superset fix -- handles both naming conventions, breaks
+neither) in case anyone points this project at an FP8 repo later, and kept
+as documentation of a real bug independent of whether this project happens
+to trigger it. *Fix: three lines in `utils.py` changed to extract leading
+digits via regex instead of assuming the whole segment is numeric -- saved
+as `airllm_shard_naming.patch`, applied to this project's own `.venv` only.*
 
 **3. Wrong model persister on macOS.** Same pattern as bug 1, but for
 `ModelPersister.get_model_persister()`: every Mac call gets
@@ -99,6 +110,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python3 run_layered.py
 ```
+
+That's it -- no manual patching step needed. All three AirLLM-side fixes
+(bugs 1, 2, 3 above) are applied automatically, either by `run_layered.py`
+itself at import time (bugs 1 and 3 -- it swaps in the correct class and
+storage backend before anything else runs) or aren't needed at all for
+this model config (bug 2 -- verified directly above; it only affects the
+FP8 repo, which this script doesn't use). `pip install -r requirements.txt`
+installs plain, unpatched AirLLM from PyPI and it works as-is.
 
 First run downloads the 55.6GB model from Hugging Face and splits it into
 per-layer shards on disk before any generation happens -- this phase alone
