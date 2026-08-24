@@ -1,0 +1,8 @@
+torch
+transformers
+accelerate
+safetensors
+huggingface_hub
+airllm
+mlx
+mlx-lm

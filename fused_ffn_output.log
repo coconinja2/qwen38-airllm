@@ -1,0 +1,14 @@
+Loading real layer 5 gate_proj/up_proj weights...
+gate_proj (W1): (17408, 5120), up_proj (W3): (17408, 5120)
+
+max absolute difference between unfused and fused output: 0.00e+00
+MATCH (within float precision)
+
+unfused: 28.633 ms/call  (200 calls)
+fused:   28.768 ms/call  (200 calls)
+speedup: 1.00x
+
+Context: the actual bottleneck measured in run_output.log was ~70,000ms/token
+(disk I/O). Whatever speedup shows up here is on a step that's a tiny fraction
+of that total -- this measures whether fusion helps the compute itself, not
+whether it would be noticeable in the full pipeline's wall-clock time.
