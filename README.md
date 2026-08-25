@@ -121,11 +121,14 @@ storage. No sudo in this session to force a true cache flush, so instead
 the real disk-read cost was cross-checked against the actual full run's
 measured timing:
 - Real combined (disk read + compute) time per layer, from the full run: **1100ms**
-- Measured compute time (real FFN weights, batch=1 -- the realistic decode shape): **~17ms**
-- Implied real disk-read time per layer: **~1083ms -- about 64x longer than compute**
+- Measured compute time (real FFN weights, batch=1 -- the realistic decode shape,
+  averaged across layers 5 and 6): **~18ms**
+- Implied real disk-read time per layer: **~1082ms -- roughly 60x longer than compute**
+  (this ratio has some run-to-run noise from CPU scheduling variance -- the
+  order of magnitude is what matters, not the exact multiple)
 
 **Conclusion: no, a deeper prefetch queue would not help.** With disk read
-~64x longer than compute per layer, the disk is already the bottleneck and
+~60x longer than compute per layer, the disk is already the bottleneck and
 stays continuously busy even with just 1-layer-ahead prefetching. A deeper
 queue can't speed up a pipe that's already saturated -- it would only let
 more reads queue up ahead of a bottleneck that isn't the one being relieved.

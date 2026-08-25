@@ -1,17 +1,17 @@
 === model.language_model.layers.5 ===
 file size: 731.0 MB
-disk read times: ['3.4ms', '0.2ms', '0.2ms']
-FFN compute times: ['16.98ms', '16.45ms', '16.40ms', '16.43ms', '16.36ms', '16.44ms', '32.25ms', '19.78ms', '16.40ms', '16.38ms']
-avg disk read:   1.3ms
-avg FFN compute: 18.39ms
+disk read times: ['7.1ms', '0.3ms', '0.2ms']
+FFN compute times: ['20.18ms', '19.82ms', '20.98ms', '21.63ms', '22.01ms', '19.81ms', '17.04ms', '17.64ms', '16.71ms', '17.27ms']
+avg disk read:   2.5ms
+avg FFN compute: 19.31ms
 disk read is 0x longer than compute for this layer
 
 === model.language_model.layers.6 ===
 file size: 731.0 MB
-disk read times: ['3.2ms', '0.2ms', '0.2ms']
-FFN compute times: ['16.95ms', '17.15ms', '16.53ms', '16.87ms', '16.50ms', '16.53ms', '16.79ms', '16.45ms', '16.51ms', '16.79ms']
-avg disk read:   1.2ms
-avg FFN compute: 16.71ms
+disk read times: ['2.6ms', '0.3ms', '0.2ms']
+FFN compute times: ['17.32ms', '17.21ms', '17.35ms', '16.94ms', '16.92ms', '17.66ms', '16.96ms', '17.67ms', '17.70ms', '16.95ms']
+avg disk read:   1.1ms
+avg FFN compute: 17.27ms
 disk read is 0x longer than compute for this layer
 
 CAVEAT: the disk-read numbers above are almost certainly invalid -- these
@@ -22,14 +22,14 @@ This session has no sudo access to force a true cache flush (`purge`), so a
 clean cold-read measurement isn't possible here directly.
 
 Cross-check instead, using the real full run's actual measured timing
-(run_output.log: 2816.5s generating 40 tokens, 64 layers/token):
+(see README.md 'Results': 2816.5s generating 40 tokens, 64 layers/token):
   avg combined (disk read + compute) time per layer, from the real run: 1100.2 ms
-  measured FFN compute time (real weights, batch=1): 16.9 ms
-  implied REAL (cold) disk read time per layer: 1083.3 ms
-  disk read is ~64x longer than compute per layer
+  measured FFN compute time (real weights, batch=1): 18.3 ms
+  implied REAL (cold) disk read time per layer: 1081.9 ms
+  disk read is ~59x longer than compute per layer
 
 Conclusion: prefetching hides compute-time-worth of disk latency behind
-the PREVIOUS layer's compute. With disk read ~64x longer than compute per
+the PREVIOUS layer's compute. With disk read ~59x longer than compute per
 layer, even 1-layer-ahead prefetching can only hide a tiny fraction of the
 read -- the disk is already the bottleneck and stays continuously busy.
 A deeper prefetch queue (3 layers instead of 2) cannot speed up a disk

@@ -76,6 +76,8 @@ def time_ffn_compute(state_dict, prefix, n=10):
     return times
 
 
+all_avg_compute_ms = []
+
 for layer_name in ["model.language_model.layers.5", "model.language_model.layers.6"]:
     print(f"=== {layer_name} ===")
     disk_times, size_mb, state_dict = time_disk_read(layer_name)
@@ -87,6 +89,7 @@ for layer_name in ["model.language_model.layers.5", "model.language_model.layers
 
     avg_disk = sum(disk_times) / len(disk_times)
     avg_compute = sum(compute_times) / len(compute_times)
+    all_avg_compute_ms.append(avg_compute * 1000)
     print(f"avg disk read:   {avg_disk*1000:.1f}ms")
     print(f"avg FFN compute: {avg_compute*1000:.2f}ms")
     print(f"disk read is {avg_disk/avg_compute:.0f}x longer than compute for this layer")
@@ -100,13 +103,15 @@ print("This session has no sudo access to force a true cache flush (`purge`), so
 print("clean cold-read measurement isn't possible here directly.")
 print()
 print("Cross-check instead, using the real full run's actual measured timing")
-print("(run_output.log: 2816.5s generating 40 tokens, 64 layers/token):")
+print("(see README.md 'Results': 2816.5s generating 40 tokens, 64 layers/token):")
 
 total_gen_s = 2816.5
 n_tokens = 40
 n_layers = 64
 avg_combined_ms = (total_gen_s / (n_tokens * n_layers)) * 1000
-avg_compute_ms = 16.9  # from the FFN measurement above, which IS valid (pure CPU work, unaffected by disk cache)
+# Use the actual measured compute times from the loop above, not a hardcoded
+# duplicate -- averaged across both layers, since that's what was just measured.
+avg_compute_ms = sum(all_avg_compute_ms) / len(all_avg_compute_ms)
 implied_disk_ms = avg_combined_ms - avg_compute_ms
 
 print(f"  avg combined (disk read + compute) time per layer, from the real run: {avg_combined_ms:.1f} ms")
@@ -114,8 +119,9 @@ print(f"  measured FFN compute time (real weights, batch=1): {avg_compute_ms:.1f
 print(f"  implied REAL (cold) disk read time per layer: {implied_disk_ms:.1f} ms")
 print(f"  disk read is ~{implied_disk_ms/avg_compute_ms:.0f}x longer than compute per layer")
 print()
+ratio = implied_disk_ms / avg_compute_ms
 print("Conclusion: prefetching hides compute-time-worth of disk latency behind")
-print("the PREVIOUS layer's compute. With disk read ~64x longer than compute per")
+print(f"the PREVIOUS layer's compute. With disk read ~{ratio:.0f}x longer than compute per")
 print("layer, even 1-layer-ahead prefetching can only hide a tiny fraction of the")
 print("read -- the disk is already the bottleneck and stays continuously busy.")
 print("A deeper prefetch queue (3 layers instead of 2) cannot speed up a disk")

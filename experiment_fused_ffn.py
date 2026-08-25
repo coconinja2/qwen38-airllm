@@ -13,7 +13,7 @@ Two things are measured:
    unfused version for just this FFN gate/up step, on this machine's CPU?
 
 This does NOT re-run full text generation. The project's actual
-bottleneck (measured earlier: run_output.log) is disk I/O during
+bottleneck (measured earlier: see README.md "Results") is disk I/O during
 layer-by-layer streaming, not this matmul -- fusing gate/up won't move
 that number. This isolates the one thing fusion *can* affect (compute
 time for this specific step) from the thing it can't (disk read time),
@@ -93,7 +93,8 @@ print(f"unfused: {t_unfused*1000/N:.3f} ms/call  ({N} calls)")
 print(f"fused:   {t_fused*1000/N:.3f} ms/call  ({N} calls)")
 print(f"speedup: {t_unfused/t_fused:.2f}x")
 print()
-print("Context: the actual bottleneck measured in run_output.log was ~70,000ms/token")
-print("(disk I/O). Whatever speedup shows up here is on a step that's a tiny fraction")
-print("of that total -- this measures whether fusion helps the compute itself, not")
-print("whether it would be noticeable in the full pipeline's wall-clock time.")
+print("Context: the actual bottleneck measured in the full run (see README.md) was")
+print("~70,000ms/token (disk I/O). Whatever speedup shows up here is on a step that's")
+print("a tiny fraction of that total -- this measures whether fusion helps the")
+print("compute itself, not whether it would be noticeable in the full pipeline's")
+print("wall-clock time.")

@@ -73,7 +73,7 @@ MODEL_ID = "Qwen/Qwen3.8-27B"
 t0 = time.time()
 model = AirLLMQwen3_5(MODEL_ID, device="cpu")
 t_load = time.time() - t0
-print(f"[timing] AutoModel.from_pretrained (download + per-layer split/prep): {t_load:.1f}s", flush=True)
+print(f"[timing] AirLLMQwen3_5 init (download + per-layer split/prep): {t_load:.1f}s", flush=True)
 
 prompt = ["Explain what a transformer neural network is, in two sentences."]
 
