@@ -1,9 +1,19 @@
 # qwen38-airllm
 
-Runs Alibaba's real Qwen3.8-27B on a 16GB M3 MacBook Air by never holding
-more than one transformer layer's weights in memory at a time -- using
+A hands-on exploration of how far you can stretch consumer hardware for
+LLM inference: running Alibaba's real Qwen3.8-27B (a 28B-parameter model)
+on a 16GB M3 MacBook Air by never holding more than one transformer
+layer's weights in memory at a time -- using
 [AirLLM](https://github.com/lyogavin/airllm) (real library, MIT licensed,
 pulled from PyPI, unmodified) instead of standard `transformers` loading.
+
+This started as a "does this actually work, and how slow is it really"
+question, not a production project. Getting there meant finding and fixing
+four real bugs in a third-party library running a model one week old,
+verifying every claim by measuring it rather than assuming, and correcting
+course twice when an initial measurement turned out to be flawed (see the
+prefetch-depth experiment below) -- all documented as it happened, mistakes
+included.
 
 ## Why this exists
 
@@ -149,3 +159,31 @@ result) would help, using layer 5's real trained weights.
   (where each separate kernel launch carries real overhead) doesn't show a
   benefit here, and even if it did, it wouldn't move the ~70s/token number
   above -- that's disk-bound, not compute-bound.
+
+**Prefetch-depth experiment** (`experiment_prefetch_depth.py`,
+`prefetch_depth_output.log`): AirLLM overlaps disk I/O with compute by
+prefetching the *next* layer's weights in a background thread while the
+*current* layer computes -- up to 2 layers resident in memory at once.
+Would prefetching 2 layers ahead (3 resident) help further? Tested by
+measuring real per-layer disk-read time against real per-layer compute
+time (using layer 5 and 6's actual weights) -- deeper prefetch only helps
+if there's idle disk time to fill, which only happens when compute takes
+longer than a disk read.
+
+The first attempt at this measurement was wrong, and it's left in the
+script and this writeup rather than quietly fixed, because the mistake is
+itself informative: the layer files had just been written to disk minutes
+earlier, so macOS's page cache served them from RAM -- 731MB "reading" in
+~1ms, which implies ~700GB/s throughput, physically impossible for real
+storage. No sudo in this session to force a true cache flush, so instead
+the real disk-read cost was cross-checked against the actual full run's
+measured timing:
+- Real combined (disk read + compute) time per layer, from the full run: **1100ms**
+- Measured compute time (real FFN weights, batch=1 -- the realistic decode shape): **~17ms**
+- Implied real disk-read time per layer: **~1083ms -- about 64x longer than compute**
+
+**Conclusion: no, a deeper prefetch queue would not help.** With disk read
+~64x longer than compute per layer, the disk is already the bottleneck and
+stays continuously busy even with just 1-layer-ahead prefetching. A deeper
+queue can't speed up a pipe that's already saturated -- it would only let
+more reads queue up ahead of a bottleneck that isn't the one being relieved.
