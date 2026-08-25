@@ -114,20 +114,32 @@ it, not raw throughput.*
 
 ## Run it
 
+Dependencies are managed with [Poetry](https://python-poetry.org/), pinned
+to the exact versions this was actually tested against (`pyproject.toml` /
+`poetry.lock`) -- not just "latest of everything," since airllm's own
+declared compatibility range (`transformers>=4.49,<5.13`) is narrower than
+what's currently on PyPI, and the newest transformers doesn't work with it.
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+poetry install
 python3 run_layered.py
 ```
 
-That's it -- no manual patching step needed. All three AirLLM-side fixes
-(bugs 1, 2, 3 above) are applied automatically, either by `run_layered.py`
-itself at import time (bugs 1 and 3 -- it swaps in the correct class and
-storage backend before anything else runs) or aren't needed at all for
-this model config (bug 2 -- verified directly above; it only affects the
-FP8 repo, which this script doesn't use). `pip install -r requirements.txt`
-installs plain, unpatched AirLLM from PyPI and it works as-is.
+The venv comes first, on purpose: this repo's `poetry.toml` sets
+`virtualenvs.create = false`, so `poetry install` installs straight into
+whatever Python environment is already active rather than creating its
+own -- create and activate the venv first, then `poetry install` targets
+it directly.
+
+That's it beyond that -- no manual patching step needed. All three
+AirLLM-side fixes (bugs 1, 2, 3 above) are applied automatically, either by
+`run_layered.py` itself at import time (bugs 1 and 3 -- it swaps in the
+correct class and storage backend before anything else runs) or aren't
+needed at all for this model config (bug 2 -- verified directly above; it
+only affects the FP8 repo, which this script doesn't use). `poetry install`
+pulls plain, unpatched AirLLM from PyPI and it works as-is.
 
 First run downloads the 55.6GB model from Hugging Face and splits it into
 per-layer shards on disk before any generation happens -- this phase alone
@@ -137,8 +149,15 @@ end. Subsequent runs skip the download/split phase if the cache is intact.
 
 ## Results
 
-**End-to-end run** (16GB M3 MacBook Air, CPU): real, coherent output --
-see `run_output.log`.
+**End-to-end run** (16GB M3 MacBook Air, CPU): real, coherent output.
+`run_output.log` isn't checked into this repo (git-ignored -- it's a local
+run artifact, not source), but the actual generated answer and full timing
+were:
+
+> "A Transformer neural network is a deep learning architecture that relies
+> on self-attention mechanisms to weigh the importance of different parts
+> of the input data, allowing it to process sequences in parallel rather
+> than sequentially."
 - Download + layer-split: 1232.5s (~20.5 min)
 - Generation: 2816.5s (~47 min) for 40 tokens -> **0.014 tok/s, ~70s/token**
 - Total: 4050.7s (~67.5 min)

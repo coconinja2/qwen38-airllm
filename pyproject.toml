@@ -1,0 +1,24 @@
+[project]
+name = "qwen38-airllm"
+version = "0.1.0"
+description = "Layer-by-layer disk streaming of Qwen3.8-27B on a 16GB Mac via AirLLM"
+authors = [
+    {name = "coconinja2"}
+]
+readme = "README.md"
+requires-python = "^3.11"
+dependencies = [
+    "torch (==2.13.0)",
+    "transformers (==5.12.1)",
+    "accelerate (==1.14.0)",
+    "safetensors (==0.8.0)",
+    "huggingface-hub (==1.28.0)",
+    "airllm (==3.2.0)",
+    "mlx (==0.32.1)",
+    "mlx-lm (==0.31.3)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
